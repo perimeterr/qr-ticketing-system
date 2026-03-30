@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
+        #reader { width: 100%; max-width: 400px; margin: 20px auto; border-radius: 15px; overflow: hidden; border: 2px solid #333; }
+        #result { margin-top: 20px; padding: 20px; border-radius: 10px; font-size: 1.2rem; font-weight: bold; min-height: 60px; transition: 0.3s; }
+        .success { background: #2ecc71; color: white; }
+        .warning { background: #f1c40f; color: black; }
+        .error { background: #e74c3c; color: white; }
+        .idle { background: #222; color: #888; }
+    </style>
+</head>
+<body>
+    <h2>Ticket Scanner</h2>
+    <div id="reader"></div>
+    <div id="result" class="idle">Ready to Scan...</div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqUHe3fSVpaOVxQ4t_lkoHWwd9fU9UwBdSKFcV4qy4W9xzsFKJbuI9QSS0tZAhnTyd/exec"; 
+        
+        let isProcessing = false;
+
+        function onScanSuccess(decodedText) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerText = "Verifying...";
+            resultDiv.className = "idle";
+
+            fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ uuid: decodedText })
+            })
+            .then(res => res.json())
+            .then(data => {
+                resultDiv.innerText = data.message;
+                resultDiv.className = data.status;
+                
+                setTimeout(() => {
+                    if (isProcessing) {
+                        isProcessing = false;
+                        resultDiv.innerText = "Ready to Scan...";
+                        resultDiv.className = "idle";
+                    }
+                }, 3000);
+            })
+            .catch(err => {
+                resultDiv.innerText = "Network Error!";
+                resultDiv.className = "error";
+                isProcessing = false;
+            });
+        }
+
+        const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+        scanner.render(onScanSuccess);
+    </script>
+</body>
+</html>
